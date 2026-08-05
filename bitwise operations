@@ -1,0 +1,73 @@
+#include <stdlib.h>
+
+// A simple comparison function for qsort to sort integers in ascending order
+int compare(const void* a, const void* b) {
+    return (*(int*)a - *(int*)b);
+}
+
+int subarrayBitwiseORs(int* arr, int arrSize) {
+    // Dynamic array acting as a flattened set containing all unique OR results.
+    // Given the constraints and bitwise properties, its maximum size won't exceed a few hundred thousand.
+    int* results = (int*)malloc(sizeof(int) * (arrSize * 32));
+    int resSize = 0;
+    
+    // Pointers to track the boundaries of unique results from the previous index
+    int prevStart = 0;
+    int prevEnd = 0;
+    
+    for (int i = 0; i < arrSize; i++) {
+        int currentNum = arr[i];
+        int currStart = resSize;
+        
+        // 1. Add the single element subarray itself
+        results[resSize++] = currentNum;
+        
+        // 2. Compute OR transformations with all unique results ending at the previous element
+        for (int j = prevStart; j < prevEnd; j++) {
+            int newOrValue = results[j] | currentNum;
+            
+            // Optimization: Only append if it's different from the last added value to minimize size
+            if (results[resSize - 1] != newOrValue) {
+                results[resSize++] = newOrValue;
+            }
+        }
+        
+        // 3. Deduplicate elements for the current step to keep 'prev' bounds tight and unique
+        int uniqueIdx = currStart;
+        for (int j = currStart + 1; j < resSize; j++) {
+            int isDuplicate = 0;
+            for (int k = currStart; k <= uniqueIdx; k++) {
+                if (results[j] == results[k]) {
+                    isDuplicate = 1;
+                    break;
+                }
+            }
+            if (!isDuplicate) {
+                results[++uniqueIdx] = results[j];
+            }
+        }
+        resSize = uniqueIdx + 1;
+        
+        // Update the historical boundaries for the next iteration step
+        prevStart = currStart;
+        prevEnd = resSize;
+    }
+    
+    // 4. Final step: Sort and find the global count of distinct values
+    if (resSize == 0) {
+        free(results);
+        return 0;
+    }
+    
+    qsort(results, resSize, sizeof(int), compare);
+    
+    int uniqueCount = 1;
+    for (int i = 1; i < resSize; i++) {
+        if (results[i] != results[i - 1]) {
+            uniqueCount++;
+        }
+    }
+    
+    free(results);
+    return uniqueCount;
+}
