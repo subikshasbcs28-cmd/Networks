@@ -1,0 +1,13 @@
+int hammingDistance(int x, int y) {
+    // Use unsigned int to safely handle negative values and bit shifts
+    unsigned int xorResult = x ^ y;
+    int count = 0;
+    
+    // Loop runs exactly as many times as there are different bits
+    while (xorResult > 0) {
+        xorResult &= (xorResult - 1); // Clears the lowest set bit
+        count++;
+    }
+    
+    return count;
+}
