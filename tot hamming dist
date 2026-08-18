@@ -1,0 +1,23 @@
+int totalHammingDistance(int* nums, int numsSize) {
+    int totalDistance = 0;
+    
+    // Iterate through all 32 bit positions of a 4-byte integer
+    for (int i = 0; i < 30; i++) { // LeetCode constraints usually limit nums[i] up to 10^9, which fits in 30 bits
+        int countOnes = 0;
+        
+        // Count how many numbers have the i-th bit set to 1
+        for (int j = 0; j < numsSize; j++) {
+            if ((nums[j] >> i) & 1) {
+                countOnes++;
+            }
+        }
+        
+        // Count of numbers with 0 at the i-th bit
+        int countZeros = numsSize - countOnes;
+        
+        // Total combinations of (0, 1) pairs at this bit position
+        totalDistance += countOnes * countZeros;
+    }
+    
+    return totalDistance;
+}
