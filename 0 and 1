@@ -1,0 +1,32 @@
+#include <string.h>
+
+// Helper macro to find the maximum of two values
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+int findMaxForm(char** strs, int strsSize, int m, int n) {
+    // dp[i][j] will store the maximum number of strings that can be formed
+    // using at most i zeros and j ones.
+    int dp[101][101]; 
+    memset(dp, 0, sizeof(dp));
+
+    for (int k = 0; k < strsSize; k++) {
+        int zeros = 0;
+        int ones = 0;
+        char* str = strs[k];
+
+        // Count zeros and ones in the current string
+        for (int i = 0; str[i] != '\0'; i++) {
+            if (str[i] == '0') zeros++;
+            else ones++;
+        }
+
+        // Update the DP table backwards to use the results from the previous string iteration
+        for (int i = m; i >= zeros; i--) {
+            for (int j = n; j >= ones; j--) {
+                dp[i][j] = MAX(dp[i][j], dp[i - zeros][j - ones] + 1);
+            }
+        }
+    }
+
+    return dp[m][n];
+}
