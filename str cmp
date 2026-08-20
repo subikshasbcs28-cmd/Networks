@@ -1,0 +1,39 @@
+int compress(char* chars, int charsSize) {
+    int write = 0; // Pointer to write the compressed characters
+    int read = 0;  // Pointer to read through the array
+
+    while (read < charsSize) {
+        char currentChar = chars[read];
+        int count = 0;
+
+        // Count occurrences of the current character
+        while (read < charsSize && chars[read] == currentChar) {
+            read++;
+            count++;
+        }
+
+        // Write the character to the write pointer
+        chars[write++] = currentChar;
+
+        // If the character repeats, write its count
+        if (count > 1) {
+            // Convert count to string and write characters
+            int start = write;
+            while (count > 0) {
+                chars[write++] = (count % 10) + '0';
+                count /= 10;
+            }
+            // Reverse the digits since they were written backwards
+            int end = write - 1;
+            while (start < end) {
+                char temp = chars[start];
+                chars[start] = chars[end];
+                chars[end] = temp;
+                start++;
+                end--;
+            }
+        }
+    }
+
+    return write; // The new length of the compressed array
+}
