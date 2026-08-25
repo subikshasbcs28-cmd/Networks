@@ -1,0 +1,76 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+// Structure to represent an edge in the adjacency list
+typedef struct EdgeNode {
+    int to;
+    bool is_original; // true if the edge was originally u -> v, false if it's a virtual reverse edge
+    struct EdgeNode* next;
+} EdgeNode;
+
+// DFS helper function
+void dfs(int node, EdgeNode** adj, bool* visited, int* change_count) {
+    visited[node] = true;
+    
+    EdgeNode* curr = adj[node];
+    while (curr != NULL) {
+        if (!visited[curr->to]) {
+            // If the original edge points away from 0 (outwards), we must reverse it
+            if (curr->is_original) {
+                (*change_count)++;
+            }
+            dfs(curr->to, adj, visited, change_count);
+        }
+        curr = curr->next;
+    }
+}
+
+int minReorder(int n, int** connections, int connectionsSize, int* connectionsColSize) {
+    // 1. Initialize adjacency list
+    EdgeNode** adj = (EdgeNode**)malloc(n * sizeof(EdgeNode*));
+    for (int i = 0; i < n; i++) {
+        adj[i] = NULL;
+    }
+
+    // 2. Build the graph with both original and artificial reverse edges
+    for (int i = 0; i < connectionsSize; i++) {
+        int u = connections[i][0];
+        int v = connections[i][1];
+
+        // Original directed edge: u -> v (is_original = true)
+        EdgeNode* edge1 = (EdgeNode*)malloc(sizeof(EdgeNode));
+        edge1->to = v;
+        edge1->is_original = true;
+        edge1->next = adj[u];
+        adj[u] = edge1;
+
+        // Artificial reverse edge: v -> u (is_original = false)
+        EdgeNode* edge2 = (EdgeNode*)malloc(sizeof(EdgeNode));
+        edge2->to = u;
+        edge2->is_original = false;
+        edge2->next = adj[v];
+        adj[v] = edge2;
+    }
+
+    // 3. Setup tracking variables
+    bool* visited = (bool*)calloc(n, sizeof(bool));
+    int change_count = 0;
+
+    // 4. Start DFS traversal from city 0
+    dfs(0, adj, visited, &change_count);
+
+    // 5. Free allocated memory
+    for (int i = 0; i < n; i++) {
+        EdgeNode* curr = adj[i];
+        while (curr != NULL) {
+            EdgeNode* temp = curr;
+            curr = curr->next;
+            free(temp);
+        }
+    }
+    free(adj);
+    free(visited);
+
+    return change_count;
+}
