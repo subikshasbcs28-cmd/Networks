@@ -1,0 +1,145 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <math.h>
+
+#define INF 1e9
+
+// Structure to represent a cell in the Min-Heap
+typedef struct {
+    int row;
+    int col;
+    int effort;
+} HeapNode;
+
+// Min-Heap Structure
+typedef struct {
+    HeapNode* data;
+    int size;
+    int capacity;
+} MinHeap;
+
+// Helper to create a Min-Heap
+MinHeap* createMinHeap(int capacity) {
+    MinHeap* heap = (MinHeap*)malloc(sizeof(MinHeap));
+    heap->data = (HeapNode*)malloc(sizeof(HeapNode) * capacity);
+    heap->size = 0;
+    heap->capacity = capacity;
+    return heap;
+}
+
+// Swap helper
+void swap(HeapNode* a, HeapNode* b) {
+    HeapNode temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+// Push item into Min-Heap
+void push(MinHeap* heap, HeapNode node) {
+    heap->data[heap->size] = node;
+    int i = heap->size;
+    heap->size++;
+    
+    while (i > 0 && heap->data[i].effort < heap->data[(i - 1) / 2].effort) {
+        swap(&heap->data[i], &heap->data[(i - 1) / 2]);
+        i = (i - 1) / 2;
+    }
+}
+
+// Pop min item from Min-Heap
+HeapNode pop(MinHeap* heap) {
+    HeapNode minNode = heap->data[0];
+    heap->size--;
+    heap->data[0] = heap->data[heap->size];
+    
+    int i = 0;
+    while (2 * i + 1 < heap->size) {
+        int left = 2 * i + 1;
+        int right = 2 * i + 2;
+        int smallest = left;
+        
+        if (right < heap->size && heap->data[right].effort < heap->data[left].effort) {
+            smallest = right;
+        }
+        
+        if (heap->data[i].effort <= heap->data[smallest].effort) {
+            break;
+        }
+        
+        swap(&heap->data[i], &heap->data[smallest]);
+        i = smallest;
+    }
+    return minNode;
+}
+
+int minimumEffortPath(int** heights, int heightsSize, int* heightsColSize) {
+    int rows = heightsSize;
+    int cols = heightsColSize[0];
+    
+    // 1. Allocate and initialize the 2D effort tracker array
+    int** effort = (int**)malloc(rows * sizeof(int*));
+    for (int i = 0; i < rows; i++) {
+        effort[i] = (int*)malloc(cols * sizeof(int));
+        for (int j = 0; j < cols; j++) {
+            effort[i][j] = INF;
+        }
+    }
+    
+    // 2. Initialize Min-Heap and push the source cell
+    MinHeap* heap = createMinHeap(rows * cols * 4);
+    effort[0][0] = 0;
+    push(heap, (HeapNode){0, 0, 0});
+    
+    // Direction tracking vectors for neighbors (Up, Down, Left, Right)
+    int dr[] = {-1, 1, 0, 0};
+    int dc[] = {0, 0, -1, 1};
+    
+    // 3. Dijkstra's loop
+    while (heap->size > 0) {
+        HeapNode curr = pop(heap);
+        int r = curr.row;
+        int c = curr.col;
+        int curr_effort = curr.effort;
+        
+        // If we reached the bottom-right corner, it's guaranteed to be the minimum effort
+        if (r == rows - 1 && c == cols - 1) {
+            // Free dynamic allocations before returning
+            for (int i = 0; i < rows; i++) free(effort[i]);
+            free(effort);
+            free(heap->data);
+            free(heap);
+            return curr_effort;
+        }
+        
+        // If we found a worse path to a cell already processed optimally, skip it
+        if (curr_effort > effort[r][c]) continue;
+        
+        // Evaluate all 4 possible neighbor cells
+        for (int i = 0; i < 4; i++) {
+            int nr = r + dr[i];
+            int nc = c + dc[i];
+            
+            // Check boundary conditions
+            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                // The overall effort to jump to this neighbor
+                int jump_effort = abs(heights[r][c] - heights[nr][nc]);
+                int max_effort_to_neighbor = (curr_effort > jump_effort) ? curr_effort : jump_effort;
+                
+                // Relaxation step
+                if (max_effort_to_neighbor < effort[nr][nc]) {
+                    effort[nr][nc] = max_effort_to_neighbor;
+                    push(heap, (HeapNode){nr, nc, max_effort_to_neighbor});
+                }
+            }
+        }
+    }
+    
+    // Garbage collection for unreachable scenarios
+    for (int i = 0; i < rows; i++) free(effort[i]);
+    free(effort);
+    free(heap->data);
+    free(heap);
+    
+    return 0;
+}
