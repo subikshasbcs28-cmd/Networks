@@ -1,0 +1,47 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define INF 1e9
+
+int findCheapestPrice(int n, int** flights, int flightsSize, int* flightsColSize, int src, int dst, int k) {
+    // 1. Create two arrays: one for the current iteration and one for the previous iteration
+    int* prices = (int*)malloc(n * sizeof(int));
+    int* prev_prices = (int*)malloc(n * sizeof(int));
+    
+    // Initialize all prices to infinity, except the source which is 0
+    for (int i = 0; i < n; i++) {
+        prices[i] = INF;
+        prev_prices[i] = INF;
+    }
+    prices[src] = 0;
+    prev_prices[src] = 0;
+
+    // 2. Relax the edges exactly k + 1 times
+    for (int i = 0; i <= k; i++) {
+        // Copy current prices to prev_prices to use as a stable baseline for this level
+        memcpy(prev_prices, prices, n * sizeof(int));
+
+        for (int j = 0; j < flightsSize; j++) {
+            int u = flights[j][0]; // From
+            int v = flights[j][1]; // To
+            int w = flights[j][2]; // Price
+
+            // Only relax if the starting city 'u' was reachable in a previous step
+            if (prev_prices[u] != INF) {
+                if (prev_prices[u] + w < prices[v]) {
+                    prices[v] = prev_prices[u] + w;
+                }
+            }
+        }
+    }
+
+    int result = prices[dst];
+
+    // 3. Free dynamically allocated memory
+    free(prices);
+    free(prev_prices);
+
+    // Return -1 if the destination is unreachable within k stops
+    return (result == INF) ? -1 : result;
+}
