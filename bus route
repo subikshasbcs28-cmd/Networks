@@ -1,0 +1,162 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+// Structure for the BFS queue nodes
+typedef struct {
+    int stop;
+    int bus_count;
+} QueueNode;
+
+// Node structure for the hash map / adjacency list
+typedef struct EdgeNode {
+    int route_index;
+    struct EdgeNode* next;
+} EdgeNode;
+
+// Simple Hash Map entry to map a stop to its routes
+typedef struct {
+    int stop;
+    EdgeNode* routes_head;
+} StopRoutesMap;
+
+// Helper function to find or insert a stop into our map
+EdgeNode** findOrInsert(StopRoutesMap* map, int* map_size, int max_capacity, int stop) {
+    // Using simple linear probing / direct scan for simplicity since stops can be large values
+    // In a production scenario, a proper hash table handles this better
+    for (int i = 0; i < *map_size; i++) {
+        if (map[i].stop == stop) {
+            return &(map[i].routes_head);
+        }
+    }
+    map[*map_size].stop = stop;
+    map[*map_size].routes_head = NULL;
+    (*map_size)++;
+    return &(map[*map_size - 1].routes_head);
+}
+
+int numBusesToDestination(int** routes, int routesSize, int* routesColSize, int source, int target) {
+    // Edge case: already at the destination
+    if (source == target) return 0;
+
+    // 1. Calculate total unique stops to size our hash map setup
+    // Max possible stops estimation (sum of all route lengths)
+    int max_stops = 0;
+    for (int i = 0; i < routesSize; i++) {
+        max_stops += routesColSize[i];
+    }
+
+    StopRoutesMap* map = (StopRoutesMap*)malloc(sizeof(StopRoutesMap) * max_stops);
+    int map_size = 0;
+
+    // Populate the stop-to-routes mapping
+    for (int i = 0; i < routesSize; i++) {
+        for (int j = 0; j < routesColSize[i]; j++) {
+            int stop = routes[i][j];
+            EdgeNode** head_ptr = findOrInsert(map, &map_size, max_stops, stop);
+            
+            EdgeNode* new_node = (EdgeNode*)malloc(sizeof(EdgeNode));
+            new_node->route_index = i;
+            new_node->next = *head_ptr;
+            *head_ptr = new_node;
+        }
+    }
+
+    // 2. Set up BFS structures
+    // Visited tracking for routes (buses)
+    bool* visited_routes = (bool*)calloc(routesSize, sizeof(bool));
+    
+    // Visited tracking for stops. Since stops can be up to 10^6, we track visited stops dynamically.
+    // An easy way in C without a heavy hash set is tracking visited via another dynamic array or boolean flag in our map
+    bool* visited_stops = (bool*)calloc(map_size, sizeof(bool));
+
+    // BFS Queue initialization
+    QueueNode* queue = (QueueNode*)malloc(sizeof(QueueNode) * max_stops * 2);
+    int head = 0, tail = 0;
+
+    // Enqueue source
+    queue[tail++] = (QueueNode){source, 0};
+    
+    // Mark source stop as visited in our map index
+    for (int i = 0; i < map_size; i++) {
+        if (map[i].stop == source) {
+            visited_stops[i] = true;
+            break;
+        }
+    }
+
+    // 3. BFS Loop
+    while (head < tail) {
+        QueueNode current = queue[head++];
+        int curr_stop = current.stop;
+        int curr_buses = current.bus_count;
+
+        // Find the routes associated with the current stop
+        EdgeNode* curr_routes = NULL;
+        for (int i = 0; i < map_size; i++) {
+            if (map[i].stop == curr_stop) {
+                curr_routes = map[i].routes_head;
+                break;
+            }
+        }
+
+        // Loop through all bus routes passing through this stop
+        while (curr_routes != NULL) {
+            int route_idx = curr_routes->route_index;
+
+            if (!visited_routes[route_idx]) {
+                visited_routes[route_idx] = true;
+
+                // Loop through all stops inside this route
+                for (int j = 0; j < routesColSize[route_idx]; j++) {
+                    int next_stop = routes[route_idx][j];
+
+                    if (next_stop == target) {
+                        // Free allocated memory before returning
+                        free(visited_routes);
+                        free(visited_stops);
+                        for (int k = 0; k < map_size; k++) {
+                            EdgeNode* tmp = map[k].routes_head;
+                            while (tmp) {
+                                EdgeNode* next = tmp->next;
+                                free(tmp);
+                                tmp = next;
+                            }
+                        }
+                        free(map);
+                        free(queue);
+                        return curr_buses + 1;
+                    }
+
+                    // Find next_stop index to check/mark visited
+                    for (int k = 0; k < map_size; k++) {
+                        if (map[k].stop == next_stop) {
+                            if (!visited_stops[k]) {
+                                visited_stops[k] = true;
+                                queue[tail++] = (QueueNode){next_stop, curr_buses + 1};
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            curr_routes = curr_routes->next;
+        }
+    }
+
+    // Clean up memory if target is unreachable
+    free(visited_routes);
+    free(visited_stops);
+    for (int k = 0; k < map_size; k++) {
+        EdgeNode* tmp = map[k].routes_head;
+        while (tmp) {
+            EdgeNode* next = tmp->next;
+            free(tmp);
+            tmp = next;
+        }
+    }
+    free(map);
+    free(queue);
+
+    return -1; 
+}
